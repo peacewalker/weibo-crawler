@@ -1,0 +1,106 @@
+# .github/workflows/sync-and-build.yml
+
+name: Sync Upstream and Build Docker Image
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build without upstream changes'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  sync_and_build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      # ...前面的步骤保持不变...
+      - name: Checkout your fork
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get commit SHA before sync
+        id: pre-sync
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Sync with upstream repository by merging
+        id: sync
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote add upstream https://github.com/dataabc/weibo-crawler.git
+          git pull upstream master --no-rebase
+          git push origin master
+          echo "Sync completed by merging."
+          
+      - name: Get commit SHA after sync
+        id: post-sync
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [ "${{ steps.pre-sync.outputs.sha }}" != "${{ steps.post-sync.outputs.sha }}" ]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Print change detection result
+        run: |
+          echo "Commit before sync: ${{ steps.pre-sync.outputs.sha }}"
+          echo "Commit after sync:  ${{ steps.post-sync.outputs.sha }}"
+          if [ "${{ steps.check_changes.outputs.changes_detected }}" == "true" ]; then
+            echo "Changes detected from upstream."
+          elif [ "${{ github.event.inputs.force_build }}" == "true" ]; then
+            echo "Manual force build triggered."
+          else
+            echo "No new changes from upstream and not a force build. Skipping."
+          fi
+          
+      - name: Set up QEMU
+        if: steps.check_changes.outputs.changes_detected == 'true' || github.event.inputs.force_build == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.check_changes.outputs.changes_detected == 'true' || github.event.inputs.force_build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check_changes.outputs.changes_detected == 'true' || github.event.inputs.force_build == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 最终修正: 增加 labels: false 来禁用元数据标签的自动生成
+      - name: Extract Docker metadata
+        id: meta
+        if: steps.check_changes.outputs.changes_detected == 'true' || github.event.inputs.force_build == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
+          labels: false
+
+      - name: Build and push Docker image
+        if: steps.check_changes.outputs.changes_detected == 'true' || github.event.inputs.force_build == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          # labels: ${{ steps.meta.outputs.labels }} # 由于上面禁用了labels，这行可以注释掉或删除
+          provenance: false
