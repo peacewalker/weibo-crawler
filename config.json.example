@@ -11,6 +11,66 @@
         "json"
     ], // 输出格式（可多选），可选项：csv, json, mysql, mongo, sqlite, post, markdown，示例：["markdown"] 或 ["markdown", "csv", "json"]
     "markdown_split_by": "day_by_month", // markdown文件分割方式，可选项：day（按天，平铺），day_by_month（按天，按月归档到子文件夹），month（按月），year（按年），all（所有数据在一个文件）
+    "markdown_sort_order": "new_to_old", // markdown中同一分组内多条微博的排序方式，可选项：new_to_old（从新到旧，最新在前），old_to_new（从旧到新，最早在前）
+    "markdown_image_order": "live_photo_first", // markdown中图片与Live Photo的排列顺序，可选项：live_photo_first（Live Photo排在图片前面），image_first_interleaved（图片优先，同名Live Photo插入到对应图片下方）
+    "missing_weibo_report": 0, // 是否在每次爬取结束后，在 output_directory 下生成本次爬取较上次缺失（已删除/未爬到）的微博ID报告 0 = 不生成，1 = 生成
+    "markdown_preview": {
+        "link_preview": 0, // 网页链接是否预览（!语法） 0 = 普通链接 [text](url)，1 = 预览图片 ![](url)
+        "original_video_preview": 0, // 原创微博视频是否预览 0 = 普通链接，1 = 预览
+        "retweet_video_preview": 0, // 转发微博视频是否预览 0 = 普通链接，1 = 预览
+        "original_image_preview": 1, // 原创微博图片是否预览 0 = 普通链接，1 = 预览
+        "retweet_image_preview": 1, // 转发微博图片是否预览 0 = 普通链接，1 = 预览
+        "original_live_photo_preview": 0, // 原创微博Live Photo是否预览 0 = 普通链接，1 = 预览
+        "retweet_live_photo_preview": 0, // 转发微博Live Photo是否预览 0 = 普通链接，1 = 预览
+        "inline_image_preview": 1 // 正文中"查看图片"是否预览 0 = 普通链接，1 = 预览
+    },
+    // ==========================================================================
+    // 为什么会有两个配置块（markdown_file_dir 和 download_folder_name）？
+    //
+    // 这取决于是否在 write_mode 中启用了 "markdown"。
+    //
+    // ——————————————————————————————————————————————————————————————————————
+    // 场景一：启用了 "markdown"（write_mode 含 "markdown"）
+    //
+    //   程序会生成 .md 文件，并下载媒体文件到本地。
+    //
+    //   您应该修改以下两个配置块的全部项，并让相同媒体的值保持一致：
+    //     ● markdown_file_dir    → 决定 .md 文件里链接的路径
+    //                               同时决定图片的下载目录
+    //     ● download_folder_name → 决定视频和 Live Photo 的下载目录
+    //                             （其中图片项在 md 模式下不生效，可忽略）
+    //
+    // ——————————————————————————————————————————————————————————————————————
+    // 场景二：没有启用 "markdown"（write_mode 不含 "markdown"）
+    //
+    //   程序不会生成 .md 文件，只下载媒体文件到本地。
+    //
+    //   你只需修改 download_folder_name 的全部六项：
+    //     ● download_folder_name → 决定所有媒体文件的下载目录
+    //     ● markdown_file_dir    → 不参与任何逻辑，完全忽略
+    //
+    // ——————————————————————————————————————————————————————————————————————
+    //
+    // 图片的下载目录在 md 模式下改由 markdown_file_dir 接管；
+    // 视频和 Live Photo 的下载目录在所有模式下统一由 download_folder_name 接管。
+    //
+    // ==========================================================================
+    "markdown_file_dir": {
+        "original_image_dir": "img", // md 中图片链接路径 & 图片下载目录
+        "retweet_image_dir": "img",
+        "original_video_dir": "原创微博视频", // md 中视频链接路径
+        "retweet_video_dir": "转发微博视频",
+        "original_live_photo_dir": "原创微博Live Photo视频", // md 中 Live Photo 链接路径
+        "retweet_live_photo_dir": "转发微博Live Photo视频"
+    },
+    "download_folder_name": {
+        "original_image_folder": "原创微博图片", // 图片下载目录（仅非 md 模式生效）
+        "retweet_image_folder": "转发微博图片",
+        "original_video_folder": "原创微博视频", // 视频下载目录（所有模式生效）
+        "retweet_video_folder": "转发微博视频",
+        "original_live_photo_folder": "原创微博Live Photo视频", // Live Photo 下载目录（所有模式生效）
+        "retweet_live_photo_folder": "转发微博Live Photo视频"
+    },
     "original_pic_download": 0, // 是否下载原创微博图片 0 = 不下载，1 = 下载
     "retweet_pic_download": 0, // 是否下载转发微博图片 0 = 不下载，1 = 下载
     "original_video_download": 0, // 是否下载原创微博视频 0 = 不下载，1 = 下载
